@@ -10,14 +10,13 @@ import signal
 import socket
 import sys
 import threading
+from functools import wraps
 
 import six
 import voltron
 from flask import Flask, Response, make_response, redirect, render_template, request
 from werkzeug.serving import BaseWSGIServer, ThreadedWSGIServer, WSGIRequestHandler
 from werkzeug.wsgi import DispatcherMiddleware, SharedDataMiddleware
-
-# import pysigset
 
 from .api import *
 from .plugin import *
@@ -69,6 +68,37 @@ elif sys.version_info.major == 3:
 else:
     raise RuntimeError("Not sure what strings look like on python %d" %
                        sys.version_info.major)
+
+
+def safeguard_signals(func):
+    """
+    Decorator ment to safeguard GDB on platforms other than OSX from bugs regarding signal
+    hijacking by threads spawned inside the debugger.
+
+    Uses pysigset to disable SIGCHLD signal processing withing decorated function and any thread
+    that function may create.
+
+    When on OSX or in debugger other than GDB, decorated function executes without changes.
+    """
+    @wraps(func)
+    def inner(*args, **kwargs):
+        try:
+            import gdb
+            PROTECT = True
+        except ImportError:
+            PROTECT = False
+
+        if sys.platform == 'darwin':
+            PROTECT = False
+
+        if PROTECT:
+            import pysigset
+            with pysigset.suspended_signals(signal.SIGCHLD):
+                return func(*args, **kwargs)
+        else:
+            return func(*args, **kwargs)
+
+    return inner
 
 
 class APIFlaskApp(Flask):
@@ -144,8 +174,8 @@ class Server(object):
             }
         )
 
+        @safeguard_signals
         def run_listener(name, cls, arg):
-            # with pysigset.suspended_signals(signal.SIGCHLD):
             log.debug("Starting listener for {} socket on {}".format(name, str(arg)))
             s = cls(*arg)
             t = threading.Thread(target=s.serve_forever)

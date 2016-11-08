@@ -18,20 +18,20 @@ Built-in views are provided for:
 
 The author's setup looks something like this:
 
-![voltron example LLDB](http://i.imgur.com/p3XcagJ.png)
+![voltron example LLDB](http://i.imgur.com/9nukztA.png)
 
 Any debugger command can be split off into a view and highlighted with a specified Pygments lexer:
 
-![command views](http://i.imgur.com/mqptE3Z.png)
+![command views](http://i.imgur.com/RbYQYXp.png)
 
 More screenshots are [here](https://github.com/snare/voltron/wiki/Screenshots).
 
 Support
 -------
 
-`voltron` supports LLDB, GDB, VDB and WinDbg/CDB (via [PyKD](https://pykd.codeplex.com/)) and runs on OS X, Linux and Windows.
+`voltron` supports LLDB, GDB, VDB and WinDbg/CDB (via [PyKD](https://pykd.codeplex.com/)) and runs on macOS, Linux and Windows.
 
-WinDbg support is new, please [open an issue](https://github.com/snare/voltron/issues) if you have problems.
+WinDbg support is still fairly new, please [open an issue](https://github.com/snare/voltron/issues) if you have problems.
 
 The following architectures are supported:
 
@@ -46,18 +46,22 @@ The following architectures are supported:
 Installation
 ------------
 
-Releases are on PyPI. Install with `pip`:
+Download the source and run the install script:
 
-    $ pip install voltron
+    $ git clone https://github.com/snare/voltron
+    $ cd voltron
+    $ ./install.sh
 
-If you want to be bleeding edge, clone this repo and install with `setup.py`:
+If you want to install Python packages into the user `site-packages` directory, use the `-u` flag:
 
-    $ python setup.py install
+    $ ./install.sh -u
+
+If you are on Windows without a shell, have problems installing, or would prefer to install manually, please see the [manual installation documentation](https://github.com/snare/voltron/wiki/Installation).
 
 Quick Start
 -----------
 
-1. If your debugger has an init script (`.lldbinit` for LLDB or `.gdbinit` for GDB) configure it to load Voltron when it starts by sourcing the `entry.py` entry point script. The full path will be inside the `voltron` package. For example, on OS X it might be */Library/Python/2.7/site-packages/voltron/entry.py*. If you don't add this to your init script, you'll need to execute the commands after starting your debugger.
+1. If your debugger has an init script (`.lldbinit` for LLDB or `.gdbinit` for GDB) configure it to load Voltron when it starts by sourcing the `entry.py` entry point script. The full path will be inside the `voltron` package. For example, on macOS it might be */Library/Python/2.7/site-packages/voltron/entry.py*. The `install.sh` script will add this to your `.gdbinit` or `.lldbinit` file automatically if it detects GDB or LLDB in your path.
 
     LLDB:
 
@@ -66,8 +70,6 @@ Quick Start
     GDB:
 
         source /path/to/voltron/entry.py
-        voltron init
-        set disassembly-flavor intel
 
 2. Start your debugger and initialise Voltron manually if necessary.
 
@@ -89,11 +91,11 @@ Quick Start
         $ ./vdbbin target_binary
         > script /path/to/voltron/entry.py
 
-    WinDbg/CDB (requires [PyKD](https://pykd.codeplex.com/)):
+    WinDbg/CDB is only supported run via Bash with a Linux userland. The author tests with [Git Bash](https://git-for-windows.github.io) and [ConEmu](http://conemu.github.io). PyKD and Voltron can be loaded in one command when launching the debugger:
 
-        > cdb -c '.load C:\path\to\pykd.pyd ; !py --global C:\path\to\voltron\entry.py' target_binary
+        $ cdb -c '.load C:\path\to\pykd.pyd ; !py --global C:\path\to\voltron\entry.py' target_binary
 
-3. In another terminal (I use iTerm panes) start one of the UI views. On LLDB and WinDbg the views will update immediately. On GDB and VDB they will not update until the inferior stops (at a breakpoint, after a step, etc):
+3. In another terminal (I use iTerm panes) start one of the UI views. On LLDB, WinDbg and GDB the views will update immediately. On VDB they will not update until the inferior stops (at a breakpoint, after a step, etc):
 
         $ voltron view register
         $ voltron view stack
@@ -112,20 +114,23 @@ Documentation
 
 See the [wiki](https://github.com/snare/voltron/wiki) on github.
 
+FAQ
+---
+
+**Q.** Why am I getting an `ImportError` loading Voltron?
+
+**A.** You might have multiple versions of Python installed and have installed Voltron using the wrong one. See the more detailed [installation instructions](https://github.com/snare/voltron/wiki/Installation).
+
+**Q.** [GEF](https://github.com/hugsy/gef)? [PEDA](https://github.com/longld/peda)? [PwnDbg](https://github.com/pwndbg/pwndbg)? [fG's gdbinit](https://github.com/gdbinit/gdbinit)?
+
+**A.** All super great extensions for GDB. These tools primarily provide sets of additional commands for exploitation tasks, but each also provides a "context" display with a view of registers, stack, code, etc, like Voltron. These tools print their context display in the debugger console each time the debugger stops. Voltron takes a different approach by embedding an RPC server implant in the debugger and enabling the attachment of views from other terminals (or even web browsers, or now [synchronising with Binary Ninja](https://github.com/snare/binja)), which allows the user to build a cleaner multi-window interface to their debugger. Voltron works great alongside all of these tools. You can just disable the context display in your GDB extension of choice and hook up some Voltron views, while still getting all the benefits of the useful commands added by these tools.
+
 Bugs and Errata
 ---------------
 
 See the [issue tracker](https://github.com/snare/voltron/issues) on github for more information or to submit issues.
 
-### GDB
-
-1. GDB on some distros is built with Python 3, but the system's Python is version 2. If Voltron is installed into Python 2's `site-packages` it will not work with GDB. See [this page on the wiki](https://github.com/snare/voltron/wiki/Voltron-on-Ubuntu-14.04-with-GDB) for installation instructions.
-
-2. There is no clean way to hook GDB's exit, only the inferior's exit, so the Voltron server is started and stopped along with the inferior. This results in views showing "Connection refused" before the inferior has been started.
-
-3. Due to a limitation in the GDB API, the views are only updated each time the debugger is stopped (e.g. by hitting a breakpoint), so view contents are not populated immediately when the view is connected, only when the first breakpoint is hit.
-
-4. If the stack view is causing GDB to hang then it must be launched **after** the debugger has been launched, the inferior started, and the debugger stopped (e.g. a breakpoint hit). This has been fixed, but this note will remain until another release is issued.
+If you're experiencing an `ImportError` loading Voltron, please ensure you've followed the [installation instructions](https://github.com/snare/voltron/wiki/Installation) for your platform.
 
 ### LLDB
 
@@ -133,13 +138,11 @@ On older versions of LLDB, the `voltron init` command must be run manually after
 
 ### WinDbg
 
-More information about WinDbg/CDB support [here](https://github.com/snare/voltron/wiki/WinDbg).
+More information about WinDbg/CDB support [here](https://github.com/snare/voltron/wiki/Installation#windbg).
 
 ### Misc
 
-1. The authors primarily use Voltron with the most recent version of LLDB on OS X. We will try to test everything on as many platforms and architectures as possible before releases, but LLDB/OS X/x64 is going to be by far the most frequently-used combination. Hopefully Voltron doesn't set your pets on fire, but YMMV.
-
-2. Intel is the only disassembly flavour currently supported for syntax highlighting.
+The authors primarily use Voltron with the most recent version of LLDB on macOS. We will try to test everything on as many platforms and architectures as possible before releases, but LLDB/macOS/x64 is going to be by far the most frequently-used combination. Hopefully Voltron doesn't set your pets on fire, but YMMV.
 
 License
 -------
@@ -151,7 +154,7 @@ If you use this and don't hate it, buy me a beer at a conference some time. This
 Credits
 -------
 
-Thanks to Azimuth Security for letting me spend time working on this.
+Thanks to my former employers Assurance and Azimuth Security for giving me time to spend working on this.
 
 Props to [richo](http://github.com/richo) for all his contributions to Voltron.
 
@@ -160,3 +163,5 @@ Props to [richo](http://github.com/richo) for all his contributions to Voltron.
 Thanks to [Willi](http://github.com/williballenthin) for implementing the VDB support.
 
 Voltron now uses [Capstone](http://www.capstone-engine.org) for disassembly as well as the debugger hosts' internal disassembly mechanism. [Capstone](http://www.capstone-engine.org) is a powerful, open source, multi-architecture disassembler upon which the next generation of reverse engineering and debugging tools are being built. Check it out.
+
+Thanks to [grazfather](http://github.com/grazfather) for ongoing contributions.

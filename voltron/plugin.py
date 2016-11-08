@@ -9,6 +9,7 @@ import voltron
 
 log = logging.getLogger('plugin')
 
+
 class PluginManager(object):
     """
     Collects and validates API, debugger and view plugins. Provides methods to
@@ -30,6 +31,11 @@ class PluginManager(object):
     def register_plugins(self):
         for p in voltron.env.plugins:
             self.register_plugin(p)
+
+    def register_command_plugins(self):
+        for p in voltron.env.plugins:
+            if issubclass(p, CommandPlugin):
+                self.register_plugin(p)
 
     @property
     def api_plugins(self):
@@ -288,6 +294,10 @@ class CommandPlugin(VoltronPlugin):
     """
     plugin_type = 'command'
     name = None
+
+
+class VoltronCommand(object):
+    pass
 
 
 #

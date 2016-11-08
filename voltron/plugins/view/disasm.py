@@ -1,19 +1,15 @@
 from voltron.view import *
 from voltron.plugin import *
 from voltron.api import *
-try:
-    from voltron.lexers import *
-    import pygments
-    import pygments.formatters
-    have_pygments = True
-except ImportError:
-    have_pygments = False
+from voltron.lexers import *
+import pygments
+import pygments.formatters
 
 
 class DisasmView(TerminalView):
     @classmethod
     def configure_subparser(cls, subparsers):
-        sp = subparsers.add_parser('disasm', help='disassembly view', aliases=('d', 'dis', 'disasm'))
+        sp = subparsers.add_parser('disasm', help='disassembly view', aliases=('d', 'dis'))
         VoltronView.add_generic_arguments(sp)
         sp.set_defaults(func=DisasmView)
         sp.add_argument('--use-capstone', '-c', action='store_true', default=False, help='use capstone')
@@ -21,7 +17,18 @@ class DisasmView(TerminalView):
                         help='address (in hex or decimal) from which to start disassembly')
 
     def build_requests(self):
-        req = api_request('disassemble', block=self.block, use_capstone=self.args.use_capstone, offset=self.scroll_offset, address=self.args.address)
+        if self.args.address:
+            if self.args.address.startswith('0x'):
+                addr = int(self.args.address, 16)
+            else:
+                try:
+                    addr = int(self.args.address, 10)
+                except:
+                    addr = int(self.args.address, 16)
+        else:
+            addr = None
+        req = api_request('disassemble', block=self.block, use_capstone=self.args.use_capstone,
+                          offset=self.scroll_offset, address=addr)
         req.count = self.body_height()
         return [req]
 
@@ -40,14 +47,16 @@ class DisasmView(TerminalView):
             disasm = res.disassembly
             disasm = '\n'.join(disasm.split('\n')[:self.body_height()])
 
-            # Pygmentize output
-            if have_pygments:
-                try:
-                    host = 'capstone' if self.args.use_capstone else res.host
-                    lexer = all_lexers['{}_{}'.format(host, res.flavor)]()
-                    disasm = pygments.highlight(disasm, lexer, pygments.formatters.TerminalFormatter())
-                except Exception as e:
-                    log.warning('Failed to highlight disasm: ' + str(e))
+            # Highlight output
+            try:
+                host = 'capstone' if self.args.use_capstone else res.host
+                lexer = get_lexer_by_name('{}_{}'.format(host, res.flavor))
+                disasm = pygments.highlight(disasm, lexer, pygments.formatters.get_formatter_by_name(
+                                            self.config.format.pygments_formatter,
+                                            style=self.config.format.pygments_style))
+            except Exception as e:
+                log.warning('Failed to highlight disasm: ' + str(e))
+                log.info(self.config.format)
 
             # Build output
             self.body = disasm.rstrip()

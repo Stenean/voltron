@@ -29,7 +29,7 @@ More screenshots are [here](https://github.com/snare/voltron/wiki/Screenshots).
 Support
 -------
 
-`voltron` supports LLDB, GDB, VDB and WinDbg/CDB (via [PyKD](https://pykd.codeplex.com/)) and runs on macOS, Linux and Windows.
+Voltron supports LLDB, GDB, VDB and WinDbg/CDB (via [PyKD](https://pykd.codeplex.com/)) and runs on macOS, Linux and Windows.
 
 WinDbg support is still fairly new, please [open an issue](https://github.com/snare/voltron/issues) if you have problems.
 
@@ -45,6 +45,8 @@ The following architectures are supported:
 
 Installation
 ------------
+
+**Note:** Only macOS and Debian derivatives are fully supported by the install script. It should hopefully not fail on other Linux distros, but it won't try to install package dependencies. If you're using another distro, have a look at `install.sh` to work out what dependencies you might need to install before running it.
 
 Download the source and run the install script:
 
